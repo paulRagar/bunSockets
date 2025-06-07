@@ -1,23 +1,36 @@
 const server = Bun.serve({
     fetch(req, server) {
-        const success = server.upgrade(req);
+        const success = server.upgrade(req, {
+            data: {
+                createdAt: Date.now(),
+                channelId: new URL(req.url).searchParams.get("channelId"),
+                userId: crypto.randomUUID(),
+            }
+        });
         if (success) {
             // Bun automatically returns a 101 Switching Protocols
             // if the upgrade succeeds
-            console.log("WebSocket upgrade successful");
             return undefined;
         }
 
         // handle HTTP request normally
-        return new Response("Hello world!");
+        return new Response("Healthy");
     },
     websocket: {
-        // this is called when a message is received
         async message(ws, message) {
-            console.log(`Received ${message}`);
-            // send back a message
-            ws.send(`You said: ${message}`);
+            const { channelId, userId } = ws.data
+            ws.publish(channelId, `User: ${userId.slice(0, 4)} says: ${message}`);
         },
+        open(ws) {
+            const { channelId, userId } = ws.data
+            ws.subscribe(channelId);
+            server.publish(channelId, `User: ${userId.slice(0, 4)} has joined the chat!`);
+        },
+        close(ws) {
+            const { channelId, userId } = ws.data
+            ws.unsubscribe(channelId);
+            server.publish(channelId, `User: ${userId.slice(0, 4)} has left the chat!`);
+        }
     },
 });
 
