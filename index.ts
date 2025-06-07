@@ -13,11 +13,8 @@ const server = Bun.serve({
                 userId: crypto.randomUUID(),
             }
         });
-        if (success) {
-            return undefined;
-        }
 
-        return new Response("Healthy");
+        return success ? undefined : new Response("Healthy");
     },
     websocket: {
         async message(ws, message) {
